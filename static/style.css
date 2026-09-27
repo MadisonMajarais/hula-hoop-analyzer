@@ -1,0 +1,14 @@
+#title {
+    color:#F06767
+}
+
+#upload-btn {
+    background-color: #F06767;
+    border: #F06767;
+}
+
+#upload-btn:hover {
+    background-color: #F06767;
+    border: #F06767;
+    color: white;
+}

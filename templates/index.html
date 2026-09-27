@@ -1,0 +1,40 @@
+<!doctype html>
+<link rel="stylesheet" href="{{url_for("static", filename='style.css')}}">
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  {{ bootstrap.load_css() }}
+  <title>Hula Hoop Analyzer</title>
+</head>
+<body>
+  <h2 id="title"class="display-4">Hula Hoop Analyzer</h2>
+  <form id="video-form" action="{{ url_for('upload')}}" method="post" enctype="multipart/form-data" class="p-3">
+    <div class="mb-3">
+      <label for="video" class="form-label"> Upload a video</label>
+      <input class="form-control" type="file" id="video" name="video" accept="video/*" required></input>
+    </div>
+    <button type="submit" class="btn btn-primary" id="upload-btn">Upload</button>
+  </form>
+  {% if error %}
+    <div class="alert alert-danger">{{error}}</div>
+  {% endif %}
+  <div class="p-3" id="upload-result">
+    
+  </div>
+  {{ bootstrap.load_js() }}
+</body>
+</html>
+<script>
+  document.querySelector("#video-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const form = e.target;
+    const res = await fetch(form.action, {
+      method: "POST",
+      body: new FormData(form),
+    });
+    const data = await res.json();
+    const text = data.result;
+    document.getElementById("upload-result").textContent = text;
+  })
+</script>
+
