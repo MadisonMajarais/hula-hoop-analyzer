@@ -1,6 +1,6 @@
 import os
-import cv2
 import numpy as np
+from motion_detector import detect_motion
 
 from flask import Flask, render_template, request
 from flask_bootstrap import Bootstrap
@@ -27,20 +27,11 @@ def upload():
     video_path = os.path.join(UPLOAD_DIR, filename)
     file.save(video_path)
 
-    cap = cv2.VideoCapture(video_path)
-    bg_subtractor = cv2.createBackgroundSubtractorMOG2(detectShadows=True)
+    frame_log = detect_motion(video_path)
 
-    success = True
-    # while success:
-    #     (success, frame) = cap.read()
-    #     if not success:
-    #         break
-    #     fg_mask = bg_subtractor.apply(frame)
-    #     fg_mask = cv2.inRange(fg_mask, 200, 255)
-    #     fg_mask = cv2.morphologyEx(fg_mask, cv2.MORPH_OPEN, cv2.MORPH_RECT)
-    #     contour = cv2.findContours 
+    result = [f for f in frame_log if f["has_motion"] > 0]
 
-    return {"result": "Success"}
+    return {"total_frames": len(frame_log), "num_frames_with_motion": len(result)}
 
 
 

@@ -1,9 +1,9 @@
 <!doctype html>
-<link rel="stylesheet" href="{{url_for("static", filename='style.css')}}">
 <html lang="en">
 <head>
   <meta charset="utf-8">
   {{ bootstrap.load_css() }}
+  <link rel="stylesheet" href="{{url_for("static", filename='style.css')}}">
   <title>Hula Hoop Analyzer</title>
 </head>
 <body>
@@ -18,6 +18,9 @@
   {% if error %}
     <div class="alert alert-danger">{{error}}</div>
   {% endif %}
+  <div id="loading-spinner" class="mb-3 spinner-border d-none" role="status">
+    <span class="sr-only">Processing...</span>
+  </div>
   <div class="p-3" id="upload-result">
     
   </div>
@@ -28,13 +31,18 @@
   document.querySelector("#video-form").addEventListener("submit", async function (e) {
     e.preventDefault();
     const form = e.target;
+    const loading_spinner = document.getElementById("loading-spinner")
+    loading_spinner.classList.remove("d-none")
     const res = await fetch(form.action, {
       method: "POST",
       body: new FormData(form),
     });
     const data = await res.json();
-    const text = data.result;
-    document.getElementById("upload-result").textContent = text;
+    const num_frames = data.total_frames
+    const num_motion = data.num_frames_with_motion
+    document.getElementById("upload-result").textContent = `Detected ${num_frames}, ${num_motion} frames with motion`
+    
+    loading_spinner.classList.add("d-none")
   })
 </script>
 
