@@ -2,7 +2,7 @@ import os
 import numpy as np
 from motion_detector import detect_motion
 
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, url_for
 from flask_bootstrap import Bootstrap
 from werkzeug.utils import secure_filename
 
@@ -10,6 +10,7 @@ app = Flask(__name__)
 bootstrap = Bootstrap(app)
 
 UPLOAD_DIR = os.path.join(app.static_folder, "uploads")
+OUTPUT_DIR = os.path.join(app.static_folder, "outputs")
 
 
 @app.route("/")
@@ -22,16 +23,20 @@ def upload():
     file = request.files.get("video")
     if not file or file.filename == "":
         return render_template("index.html", error="Please choose a video file")
-
+    
     filename = secure_filename(file.filename)
     video_path = os.path.join(UPLOAD_DIR, filename)
     file.save(video_path)
 
-    frame_log = detect_motion(video_path)
 
-    result = [f for f in frame_log if f["has_motion"] > 0]
+    result = detect_motion(video_path, OUTPUT_DIR, filename)
 
-    return {"total_frames": len(frame_log), "num_frames_with_motion": len(result)}
+    motion_frames = [f for f in result["frame_log"] if f["has_motion"] > 0]
+
+    return {"total_frames": len(motion_frames),
+             "num_frames_with_motion": len(motion_frames),
+             "video_url": url_for("static", filename="outputs/" + result["output_filename"])
+             }
 
 
 

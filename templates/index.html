@@ -21,9 +21,11 @@
   <div id="loading-spinner" class="mb-3 spinner-border d-none" role="status">
     <span class="sr-only">Processing...</span>
   </div>
-  <div class="p-3" id="upload-result">
-    
+  <div class="p-3" id="upload-result"></div>
+  <div class="mb-3">
+    <video id="result-video" class="mb-3 d-none" controls style="max-width: 100%;"></video>
   </div>
+    
   {{ bootstrap.load_js() }}
 </body>
 </html>
@@ -32,16 +34,23 @@
     e.preventDefault();
     const form = e.target;
     const loading_spinner = document.getElementById("loading-spinner")
+    const vid = document.getElementById("result-video");
     loading_spinner.classList.remove("d-none")
+
     const res = await fetch(form.action, {
       method: "POST",
       body: new FormData(form),
     });
     const data = await res.json();
-    const num_frames = data.total_frames
-    const num_motion = data.num_frames_with_motion
-    document.getElementById("upload-result").textContent = `Detected ${num_frames}, ${num_motion} frames with motion`
+    const num_frames = data.total_frames;
+    const num_motion = data.num_frames_with_motion;
+    document.getElementById("upload-result").textContent = `Detected ${num_frames}, ${num_motion} frames with motion`;
     
+    // Display video
+    vid.classList.remove("d-none")
+    vid.src = data.video_url;
+    vid.load();
+
     loading_spinner.classList.add("d-none")
   })
 </script>
