@@ -45,21 +45,28 @@
     const vid = document.getElementById("result-video");
     loading_spinner.classList.remove("d-none")
 
-    const res = await fetch(form.action, {
-      method: "POST",
-      body: new FormData(form),
-    });
-    const data = await res.json();
-    const num_frames = data.total_frames;
-    const num_motion = data.num_frames_with_motion;
-    document.getElementById("upload-result").textContent = `Detected ${num_frames}, ${num_motion} frames with motion`;
-    
-    // Display video
-    vid.classList.remove("d-none")
-    vid.src = data.video_url;
-    vid.load();
+    const result = document.getElementById("upload-result");
+    try {
+      const res = await fetch(form.action, {
+        method: "POST",
+        body: new FormData(form),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        result.textContent = data.error || "The video could not be processed.";
+        vid.classList.add("d-none");
+        return;
+      }
 
-    loading_spinner.classList.add("d-none")
+      result.textContent = `Detected ${data.num_frames_with_motion} frames with motion out of ${data.total_frames} total frames.`;
+      vid.classList.remove("d-none");
+      vid.src = data.video_url;
+      vid.load();
+    } catch (_error) {
+      result.textContent = "The upload failed. Please try again.";
+    } finally {
+      loading_spinner.classList.add("d-none");
+    }
   })
 </script>
 
