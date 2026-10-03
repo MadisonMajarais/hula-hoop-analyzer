@@ -1,15 +1,29 @@
 import cv2
 import os
+import math
 
 
 def detect_motion(video_path, output_dir, filename):
     cap = cv2.VideoCapture(video_path)
-    bg_subtractor = cv2.createBackgroundSubtractorMOG2(detectShadows=True)
+    if not cap.isOpened():
+        cap.release()
+        raise ValueError(f"Could not open video: {video_path}")
 
     # Get video properties
     fps = cap.get(cv2.CAP_PROP_FPS)
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+    height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+
+    if (not math.isfinite(fps) or not math.isfinite(width)
+        or not math.isfinite(height) or fps <= 0 or width <= 0 or height <= 0):
+        cap.release()
+        raise ValueError("Video fps or dimensions is invalid")
+
+    width = int(width)
+    height = int(height)
+
+    
+    bg_subtractor = cv2.createBackgroundSubtractorMOG2(detectShadows=True)
 
     # Create video for output
     output_filename = "annotated_" + os.path.splitext(filename)[0] + ".webm"

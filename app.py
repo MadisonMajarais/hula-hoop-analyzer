@@ -34,11 +34,12 @@ def upload():
         return {"error": "Please choose a video file."}, 400
 
     filename = secure_filename(file.filename)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{filename}_{timestamp}"
     if not filename:
         return {"error": "Please choose a valid video filename."}, 400
-    if os.path.splitext(filename)[1].lower() not in ALLOWED_VIDEO_EXTENSIONS:
+    name, ext = os.path.splitext(filename)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{name}_{timestamp}{ext}"
+    if ext.lower() not in ALLOWED_VIDEO_EXTENSIONS:
         return {"error": "Unsupported file type. Choose AVI, M4V, MKV, MOV, MP4, or WEBM."}, 400
 
     video_path = os.path.join(UPLOAD_DIR, filename)
@@ -49,7 +50,7 @@ def upload():
 
     motion_frames = [f for f in result["frame_log"] if f["has_motion"] > 0]
 
-    return {"total_frames": len(motion_frames),
+    return {"total_frames": len(result["frame_log"]),
              "num_frames_with_motion": len(motion_frames),
              "video_url": url_for("static", filename="outputs/" + result["output_filename"])
              }
