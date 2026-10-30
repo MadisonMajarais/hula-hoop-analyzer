@@ -2,7 +2,7 @@ import cv2
 import math
 import os
 
-MIN_AREA = 5
+MIN_AREA = 100
 
 def track_tape(video_path, output_dir, filename):
     cap = cv2.VideoCapture(video_path)
@@ -31,6 +31,10 @@ def track_tape(video_path, output_dir, filename):
     frame_log = []
 
     success, frame = cap.read()
+
+    bg_subtractor = cv2.createBackgroundSubtractorMOG2(detectShadows=True)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+
     while success:
 
         # Convert to HSV colours
@@ -40,17 +44,24 @@ def track_tape(video_path, output_dir, filename):
 
         mask = cv2.inRange(hsv, lower_range, upper_range)
 
+        # Ignore anything that isn't moving (static background objects)
+        fg_mask = bg_subtractor.apply(frame)
+        fg_mask = cv2.inRange(fg_mask, 220, 255)
+        fg_mask = cv2.dilate(fg_mask, kernel)
+        mask = cv2.bitwise_and(mask, fg_mask)
+
         # Remove small noise
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
+        # Keep only tape pixels
+        tape = cv2.bitwise_and(frame, frame, mask=mask)
         # Find largest contour
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         if not contours:
             # Skip if no green found
             frame_log.append({"tape_pos": None})
-            out.write(frame)
+            out.write(tape)
             success, frame = cap.read()
             continue
 
@@ -58,7 +69,7 @@ def track_tape(video_path, output_dir, filename):
 
         if cv2.contourArea(largest) < MIN_AREA:
             frame_log.append({"tape_pos": None})
-            out.write(frame)
+            out.write(tape)
             success, frame = cap.read()
             continue
 
@@ -69,18 +80,18 @@ def track_tape(video_path, output_dir, filename):
         if M["m00"] == 0:
             #  Skips if area is 0
             frame_log.append({"tape_pos": None})
-            out.write(frame)
+            out.write(tape)
             success, frame = cap.read()
             continue
 
         # Find avg position of the center (ex. adding all x pos / area (i.e. num pixels))
         cx, cy = M["m10"] / M["m00"], M["m01"] / M["m00"]
-
+        
         frame_log.append({"tape_pos": {"x_pos": cx, "y_pos": cy}})
 
         # Draw tape center
-        cv2.circle(frame, (int(cx), int(cy)), 10, (0, 0, 255), 2)
-        out.write(frame)
+        cv2.circle(tape, (int(cx), int(cy)), 10, (0, 0, 255), 2)
+        out.write(tape)
 
         success, frame = cap.read()
 
@@ -89,9 +100,8 @@ def track_tape(video_path, output_dir, filename):
 
     return {"frame_log": frame_log, "fps": fps, "output_filename": output_filename}
 
-
 if __name__ == "__main__":
-    result = track_tape("static/uploads/20260921_150900_20261002_171458.mp4", "static/outputs", "test.mp4")
+    result = track_tape("static/uploads/20260921_145738.mp4", "static/outputs", "test.mp4")
     found = sum(1 for f in result["frame_log"] if f["tape_pos"] is not None)
     print(f"Tape found in {found}/{len(result['frame_log'])} frames")
 

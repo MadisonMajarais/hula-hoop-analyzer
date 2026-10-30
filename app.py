@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from motion_detector import detect_motion
+from tape_tracker import track_tape
 from datetime import datetime
 
 from flask import Flask, render_template, request, url_for
