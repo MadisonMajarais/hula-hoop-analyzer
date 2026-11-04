@@ -2,7 +2,7 @@ import cv2
 import math
 import os
 
-MIN_AREA = 100
+MIN_AREA = 50
 
 def track_tape(video_path, output_dir, filename):
     cap = cv2.VideoCapture(video_path)
