@@ -2,6 +2,7 @@ import os
 import numpy as np
 from motion_detector import detect_motion
 from tape_tracker import track_tape
+from hoop_tracker import track_hoop
 from datetime import datetime
 
 from flask import Flask, render_template, request, url_for
@@ -46,15 +47,15 @@ def upload():
     video_path = os.path.join(UPLOAD_DIR, filename)
     file.save(video_path)
 
+    result = track_hoop(video_path, OUTPUT_DIR, filename)
 
-    result = detect_motion(video_path, OUTPUT_DIR, filename)
+    hoop_data = result["frame_log"]
 
-    motion_frames = [f for f in result["frame_log"] if f["has_motion"] > 0]
+    return {"total_frames": len(result["frame_log"]), 
+            "hoop_data": hoop_data,
+            "video_url": url_for("static", filename="outputs/" + result["output_filename"])}
 
-    return {"total_frames": len(result["frame_log"]),
-             "num_frames_with_motion": len(motion_frames),
-             "video_url": url_for("static", filename="outputs/" + result["output_filename"])
-             }
+
 
 
 
