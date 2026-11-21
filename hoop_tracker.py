@@ -63,22 +63,39 @@ def track_hoop(video_path, output_dir, filename):
         
         # Find the center, left, right
         ys, xs = np.nonzero(mask)
-        left = np.percentile(xs, 1)
-        right = np.percentile(xs, 99)
-        top = np.percentile(ys, 1)
-        bottom = np.percentile(ys, 99)
-        c_x = (left + right) / 2
-        c_y = (top + bottom) / 2
-
-        # Find angle
         m = cv2.moments(mask, binaryImage=True)
-        angle = 0.5 * math.degrees(math.atan2(2 * m["mu11"], m["mu20"] - m["mu02"]))
+
+        hoop_pos = None
+        if len(xs) >= MIN_AREA and m["m00"] > 0:
+            left = np.percentile(xs, 1)
+            right = np.percentile(xs, 99)
+            top = np.percentile(ys, 1)
+            bottom = np.percentile(ys, 99)
+            c_x = (left + right) / 2
+            c_y = (top + bottom) / 2
+            hoop_width = right - left
+
+            # Find angle
+            angle = 0.5 * math.degrees(math.atan2(2 * m["mu11"], m["mu20"] - m["mu02"]))
+
+            values = [left, right, top, bottom, hoop_width, angle]
+            # TODO Check min width is wide enough
+            if all(math.isfinite(v) for v in values):
+                hoop_pos = {
+                    "x_pos": (left + right) / 2,
+                    "y_pos": (top + bottom) / 2,
+                    "left": left,
+                    "right": right,
+                    "width": hoop_width,
+                    "angle": angle,
+                }
         
-        frame_log.append({"hoop_pos": {"x_pos": c_x, "y_pos": c_y, "left": left, "right": right},
-                          "hoop_angle": angle})
+        
+        frame_log.append({"hoop_pos": hoop_pos})
 
         # Draw tape center
-        cv2.circle(hoop, (int(c_x), int(c_y)), 10, (0, 0, 255), 2)
+        if hoop_pos:
+            cv2.circle(hoop, (int(c_x), int(c_y)), 10, (0, 0, 255), 2)
         out.write(hoop)
 
         success, frame = cap.read()
