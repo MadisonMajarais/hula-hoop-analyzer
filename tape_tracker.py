@@ -3,6 +3,7 @@ import math
 import os
 
 MIN_AREA = 50
+REMOVE_BACKGROUND = False
 
 def track_tape(video_path, output_dir, filename):
     cap = cv2.VideoCapture(video_path)
@@ -40,21 +41,22 @@ def track_tape(video_path, output_dir, filename):
         # Convert to HSV colours
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         lower_range = (22, 100, 70)
-        upper_range = (38, 255, 255)
+        upper_range = (55, 255, 255)
 
         mask = cv2.inRange(hsv, lower_range, upper_range)
 
         # Ignore anything that isn't moving (static background objects)
-        fg_mask = bg_subtractor.apply(frame)
-        fg_mask = cv2.inRange(fg_mask, 220, 255)
-        fg_mask = cv2.dilate(fg_mask, kernel)
-        mask = cv2.bitwise_and(mask, fg_mask)
+        if REMOVE_BACKGROUND:
+            fg_mask = bg_subtractor.apply(frame)
+            fg_mask = cv2.inRange(fg_mask, 220, 255)
+            fg_mask = cv2.dilate(fg_mask, kernel)
+            mask = cv2.bitwise_and(mask, fg_mask)
 
         # Remove small noise
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
-        # Keep only tape pixels
-        tape = cv2.bitwise_and(frame, frame, mask=mask)
+        # Output frame: tape pixels only when removing background, else the full frame
+        tape = cv2.bitwise_and(frame, frame, mask=mask) if REMOVE_BACKGROUND else frame.copy()
         # Find largest contour
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 

@@ -16,3 +16,10 @@
 .spinner-border {
     color:#F06767
 }
+
+#result-video {
+    display: block;
+    margin: 0 auto;
+    max-height: 80vh;
+    max-width: 100%;
+}
