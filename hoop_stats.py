@@ -1,41 +1,25 @@
 import pandas as pd
 import numpy as np
+from hoop_plot import plot_hoop_data
 
 MIN_ORBIT_SEC = 0.3
 MAX_ORBIT_SEC = 2.0
+MIN_SWING_FRAC = 0.3
 
-def estimate_orbit_frames(x, fps):
-    # Interpolate x values to fill in gaps and find rolling average of a sliding window
-    x = x.interpolate(limit_direction="both")
-    x = x - x.rolling(round(MAX_ORBIT_SEC * fps), center=True, min_periods=1).mean()
-    x = x.to_numpy()
-
-    # Shift and find how similar x positions are to itself
-    ac = np.correlate(x, x, mode="full")[len(x) - 1:]
-
-    # Find the shift that matches best, meaning a new orbit begins
-    lo = max(1, round(MIN_ORBIT_SEC * fps))
-    hi = min(len(ac) - 1, round(MAX_ORBIT_SEC * fps))
-    if hi <= lo:
-        return None #Video too short
-    # Find estimated frame when new orbit begins
-    return lo + int(np.argmax(ac[lo:hi + 1]))
-
-
-def compute_hoop_stats(frame_log, fps):
-
+# Outputs dataframe with hoop data and window
+def build_hoop_signals(frame_log, fps):
     # Build dataframe
     df = pd.DataFrame([f["hoop_pos"] or {} for f in frame_log])
 
     #  Check table not empty
     if "x_pos" not in df:
-        return {"orbits": None, "detection_rate": 0.0}
+        return None, None
 
 
     df["time"] = df.index / fps
 
     detected = df["x_pos"].notna()
-    detection_rate = float(detected.mean())
+    # detection_rate = float(detected.mean())
 
     # Remove outliers
 
@@ -58,16 +42,18 @@ def compute_hoop_stats(frame_log, fps):
 
     # Get x pos of hoop relative to person. Only count hoop movements and
     # ignore person walking, etc.
-    orbit_sec = estimate_orbit_frames(df["xpos"], fps)
-    window = max(3, round(ORBIT_SEC * fps))
+    num_orbit_frames = estimate_num_orbit_frames(df["x_pos"], fps)
+    if num_orbit_frames is None:
+        return None, None
+    amp_window = 2 * num_orbit_frames
 
     x = df["x_pos"]
-    drift = x.rolling(window, center=True, min_period=1).mean()
+    drift = x.rolling(num_orbit_frames, center=True, min_periods=1).mean()
     swing = x - drift
 
     # Normalize to range from -1 to 1
-    amplitude = (swing.rolling(window, center=True, min_period=1).max(),
-                 - swing.rolling(window, center=True, min_period=1).min()) / 2
+    amplitude = (swing.rolling(amp_window, center=True, min_periods=1).max()
+                 - swing.rolling(amp_window, center=True, min_periods=1).min()) / 2
     offset = swing / amplitude
     # Handle cases where hoop barely moves
     offset[amplitude < 1] = np.nan
@@ -75,9 +61,39 @@ def compute_hoop_stats(frame_log, fps):
     # Save the columns in the dataframe
     df["swing"] = swing
     df["offset"] = offset
-    df["amplitude"] amplitude
+    df["amplitude"] = amplitude
+    df["drift"] = drift
 
-    
+    return df, num_orbit_frames
+
+# Return number of frames of estimated orbit window
+def estimate_num_orbit_frames(x, fps):
+    # Interpolate x values to fill in gaps and find rolling average of a sliding window
+    x = x.interpolate(limit_direction="both")
+    x = x - x.rolling(round(MAX_ORBIT_SEC * fps), center=True, min_periods=1).mean()
+    x = x.to_numpy()
+
+    # Shift and find how similar x positions are to itself
+    ac = np.correlate(x, x, mode="full")[len(x) - 1:]
+
+    # Find the shift that matches best, meaning a new orbit begins
+    lo = max(1, round(MIN_ORBIT_SEC * fps))
+    hi = min(len(ac) - 1, round(MAX_ORBIT_SEC * fps))
+    if hi <= lo:
+        return None #Video too short
+    # Find estimated frame when new orbit begins
+    return lo + int(np.argmax(ac[lo:hi + 1]))
+
+
+def compute_hoop_stats(frame_log, fps):
+
+    df, num_orbit_frames = build_hoop_signals(frame_log, fps)
+
+
+    print(num_orbit_frames)
+
+    plot_hoop_data(df, MIN_SWING_FRAC)
+
 
 
     # compute direction
