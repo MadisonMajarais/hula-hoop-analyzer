@@ -4,7 +4,7 @@ from hoop_plot import plot_hoop_data
 
 MIN_ORBIT_SEC = 0.3
 MAX_ORBIT_SEC = 2.0
-MIN_SWING_FRAC = 0.3
+MIN_SWING_THRESHOLD = 0.3
 
 # Outputs dataframe with hoop data and window
 def build_hoop_signals(frame_log, fps):
@@ -19,7 +19,8 @@ def build_hoop_signals(frame_log, fps):
     df["time"] = df.index / fps
 
     detected = df["x_pos"].notna()
-    # detection_rate = float(detected.mean())
+    detection_rate = float(detected.mean())
+    df.attrs["detection_rate"] = detection_rate
 
     # Remove outliers
 
@@ -86,21 +87,58 @@ def estimate_num_orbit_frames(x, fps):
 
 
 def compute_hoop_stats(frame_log, fps):
-
+    # Build dataframe from frame log
     df, num_orbit_frames = build_hoop_signals(frame_log, fps)
 
+    if df is None:
+        return
 
     print(num_orbit_frames)
 
-    plot_hoop_data(df, MIN_SWING_FRAC)
+    # Calculate hoop revolutions around person
+    revolutions = count_revolutions(df["offset"], MIN_SWING_THRESHOLD)
+    num_revolutions = len(revolutions)
+    df.attrs["num_revolutions"] = num_revolutions
 
+    # calculate rpm
+    if num_revolutions >= 2:
+        t_rev_first = revolutions[0] / fps
+        t_rev_last = revolutions[-1] / fps
+        rpm = (num_revolutions - 1) / (t_rev_last - t_rev_first) * 60
+    else:
+        rpm = None
+    df.attrs["rpm"] = rpm
 
+    print("num revs", num_revolutions)
+    print("rpm", rpm)
 
-    # compute direction
+    # Store times that hoop made an orbit
+    df.attrs["revolution_times"] = [i / fps for i in revolutions]
 
-     #  Compute hoop speed  
+    # TODO add speed using hula hoop diameter
 
-    # compute hoop
+    # TODO: Remove plot call
+    plot_hoop_data(df, MIN_SWING_THRESHOLD)
+
+    return {
+        "num_revolutions": num_revolutions,
+        "rpm": rpm,
+        "direction": "unknown",
+        "speed": None
+    }
+
+def count_revolutions(offsets, threshold):
+    cur_state = None
+    revolutions = []
+    for i, v in enumerate(offsets):
+        if np.isnan(v):
+            continue
+        if v < -threshold:
+            cur_state = "low"
+        if v > threshold and cur_state == "low":
+            cur_state = "high"
+            revolutions.append(i)
+    return revolutions
     
 if __name__ == "__main__":
     from hoop_tracker import track_hoop
