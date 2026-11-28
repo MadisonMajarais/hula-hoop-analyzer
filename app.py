@@ -3,6 +3,7 @@ import numpy as np
 from motion_detector import detect_motion
 from tape_tracker import track_tape
 from hoop_tracker import track_hoop
+from hoop_stats import compute_hoop_stats
 from datetime import datetime
 
 from flask import Flask, render_template, request, url_for
@@ -50,10 +51,16 @@ def upload():
     result = track_hoop(video_path, OUTPUT_DIR, filename)
 
     hoop_data = result["frame_log"]
+    fps = result["fps"]
+
+    # Compute hoop stats
+    hoop_stats = compute_hoop_stats(hoop_data, fps)
 
     return {"total_frames": len(result["frame_log"]), 
             "hoop_data": hoop_data,
-            "video_url": url_for("static", filename="outputs/" + result["output_filename"])}
+            "video_url": url_for("static", filename="outputs/" + result["output_filename"]),
+            "num_revolutions": hoop_stats["num_revolutions"],
+            "rpm": hoop_stats["rpm"]}
 
 
 
